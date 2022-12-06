@@ -15,13 +15,14 @@ from utils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
+from server import SendHandPosition, closeSocket, SocketSetup, SendIsClosed
 
 def get_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--width", help='cap width', type=int, default=960)
-    parser.add_argument("--height", help='cap height', type=int, default=540)
+    parser.add_argument("--width", help='cap width', type=int, default=1920)
+    parser.add_argument("--height", help='cap height', type=int, default=1680)
 
     parser.add_argument('--use_static_image_mode', action='store_true')
     parser.add_argument("--min_detection_confidence",
@@ -40,6 +41,7 @@ def get_args():
 
 def main():
     # Argument parsing #################################################################
+    
     args = get_args()
 
     cap_device = args.device
@@ -70,6 +72,7 @@ def main():
 
     point_history_classifier = PointHistoryClassifier()
 
+    SocketSetup()
     # Read labels ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
               encoding='utf-8-sig') as f:
@@ -143,8 +146,14 @@ def main():
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
                 if hand_sign_id == 2:  # Point gesture
                     point_history.append(landmark_list[8])
+                    SendHandPosition(landmark_list[8][0], landmark_list[8][1])
+                    SendIsClosed(False)
+                elif hand_sign_id == 1:
+                    SendIsClosed(True)
+                    point_history.append([0, 0])
                 else:
                     point_history.append([0, 0])
+
 
                 # Finger gesture classification
                 finger_gesture_id = 0
@@ -179,6 +188,7 @@ def main():
 
     cap.release()
     cv.destroyAllWindows()
+    closeSocket()
 
 
 def select_mode(key, mode):
